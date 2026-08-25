@@ -1,0 +1,64 @@
+{
+  "name": "virtualized-tree",
+  "version": "2.0.0",
+  "description": "Headless virtualized tree for React, with keyboard navigation, ARIA semantics and single/multiple selection, plus ready-made skins for MUI, Tailwind, CSS Modules, styled-components and plain React.",
+  "license": "MIT",
+  "type": "module",
+  "author": "Alessandro Marina",
+  "keywords": [
+    "react",
+    "tree",
+    "treeview",
+    "virtualized",
+    "virtual-scroll",
+    "headless",
+    "accessibility",
+    "aria",
+    "mui",
+    "tailwind",
+    "css-modules",
+    "styled-components"
+  ],
+  "peerDependencies": {
+    "@mui/icons-material": ">=5",
+    "@mui/material": ">=5",
+    "react": ">=18",
+    "styled-components": ">=5"
+  },
+  "peerDependenciesMeta": {
+    "@mui/material": {
+      "optional": true
+    },
+    "@mui/icons-material": {
+      "optional": true
+    },
+    "styled-components": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@emotion/react": "^11",
+    "@emotion/styled": "^11",
+    "@mui/icons-material": "^6",
+    "@mui/material": "^6",
+    "@types/jsdom": "^27",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "esbuild": "^0.27",
+    "jsdom": "^27",
+    "prettier": "^3",
+    "prettier-plugin-curly": "^0.3",
+    "react": "^19",
+    "react-dom": "^19",
+    "styled-components": "^6",
+    "tsx": "^4",
+    "typescript": "^5"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "node scripts/test.mjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  }
+}

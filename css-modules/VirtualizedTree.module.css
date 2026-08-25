@@ -1,0 +1,96 @@
+.root {
+  --vt-row-hover: rgba(0, 0, 0, 0.04);
+  --vt-row-selected: rgba(0, 0, 0, 0.08);
+  --vt-focus-ring: #1976d2;
+  --vt-toggle: rgba(0, 0, 0, 0.6);
+  --vt-toggle-hover: rgba(0, 0, 0, 0.87);
+  --vt-label: rgba(0, 0, 0, 0.87);
+  --vt-font-size: 0.8125rem;
+  height: 100%;
+  overflow: auto;
+  position: relative;
+  outline: none;
+}
+
+.viewport {
+  position: relative;
+  height: var(--vt-total-height);
+}
+
+.list {
+  transform: translateY(var(--vt-offset-y));
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  padding-right: 8px;
+  cursor: pointer;
+  user-select: none;
+  height: var(--vt-item-height);
+  padding-left: var(--vt-indent);
+}
+
+.row:hover {
+  background-color: var(--vt-row-hover);
+}
+
+.row[aria-selected="true"],
+.row[aria-selected="true"]:hover {
+  background-color: var(--vt-row-selected);
+}
+
+.row[data-tree-focus="true"] {
+  box-shadow: inset 0 0 0 2px var(--vt-focus-ring);
+}
+
+.toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 4px;
+  color: var(--vt-toggle);
+  width: var(--vt-toggle-size);
+  height: var(--vt-toggle-size);
+}
+
+.toggle:hover {
+  color: var(--vt-toggle-hover);
+}
+
+.spacer {
+  flex-shrink: 0;
+  margin-right: 4px;
+  width: var(--vt-toggle-size);
+}
+
+.main {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: var(--vt-font-size);
+  color: var(--vt-label);
+}
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+.icon {
+  width: 18px;
+  height: 18px;
+}

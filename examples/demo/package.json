@@ -1,0 +1,30 @@
+{
+  "name": "virtualized-tree-demo",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "screenshots": "node scripts/screenshots.mjs"
+  },
+  "dependencies": {
+    "@emotion/react": "^11",
+    "@emotion/styled": "^11",
+    "@mui/icons-material": "^6",
+    "@mui/material": "^6",
+    "react": "^19",
+    "react-dom": "^19",
+    "styled-components": "^6"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^5",
+    "playwright": "^1.55",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite": "^7"
+  }
+}
