@@ -254,3 +254,6 @@ webpack, Vite and Next actually do, and it is also what lets the CSS Modules ski
 `--test-force-exit` is passed to the runner because jsdom leaves a timer handle open that survives
 `window.close()`, so the process would never exit on its own; `--test-timeout` is there to still
 catch a genuine hang.
+
+Contributions are welcome, `CONTRIBUTING.md` has the rules CI enforces. Release history is in
+`CHANGELOG.md`.

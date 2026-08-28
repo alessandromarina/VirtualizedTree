@@ -6,7 +6,15 @@ export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: "./",
   resolve: {
-    dedupe: ["react", "react-dom", "styled-components", "@emotion/react", "@emotion/styled"],
+    dedupe: [
+      "react",
+      "react-dom",
+      "styled-components",
+      "@emotion/react",
+      "@emotion/styled",
+      "@mui/material",
+      "@mui/icons-material",
+    ],
   },
   server: {
     fs: { allow: [".", "../.."] },
