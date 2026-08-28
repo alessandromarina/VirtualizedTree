@@ -1,5 +1,10 @@
 # VirtualizedTree
 
+[![ci](https://img.shields.io/github/actions/workflow/status/alessandromarina/VirtualizedTree/ci.yml?branch=main&style=flat-square&label=ci)](https://github.com/alessandromarina/VirtualizedTree/actions/workflows/ci.yml)
+[![license](https://img.shields.io/github/license/alessandromarina/VirtualizedTree?style=flat-square)](LICENSE)
+![React](https://img.shields.io/badge/React-18%2B-20232A?style=flat-square&logo=react&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-5-3178C6?style=flat-square&logo=typescript&logoColor=white)
+
 A generic, virtualized tree view for React. Renders only the rows currently visible in the viewport
 (plus a configurable overscan), so it stays fast with large or deeply expanded trees. Supports
 single/multiple selection, full keyboard navigation and proper ARIA semantics.
