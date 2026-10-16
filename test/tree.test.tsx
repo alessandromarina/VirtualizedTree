@@ -3,7 +3,7 @@ import { scrollCalls } from "./setup";
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import React, { useCallback, useState } from "react";
+import React, { useCallback, useRef, useState } from "react";
 import { act } from "react";
 import { createRoot, Root } from "react-dom/client";
 
@@ -36,26 +36,32 @@ type HarnessProps = {
   selectionMode?: "single" | "multiple";
   initialExpanded?: string[];
   onState?: (state: { expanded: string[]; selected: string[] }) => void;
+  hoverExpand?: boolean;
+  expandOnSelect?: boolean;
 };
 
-function Harness({ items, selectionMode, initialExpanded = [], onState }: HarnessProps) {
+function Harness({ items, selectionMode, initialExpanded = [], onState, hoverExpand, expandOnSelect }: HarnessProps) {
   const [expanded, setExpanded] = useState<string[]>(initialExpanded);
   const [selected, setSelected] = useState<string[]>([]);
 
+  const latest = useRef({ expanded: initialExpanded, selected: [] as string[] });
+
   const handleExpanded = useCallback(
     (ids: string[]) => {
+      latest.current = { ...latest.current, expanded: ids };
       setExpanded(ids);
-      onState?.({ expanded: ids, selected });
+      onState?.(latest.current);
     },
-    [onState, selected]
+    [onState]
   );
 
   const handleSelected = useCallback(
     (ids: string[]) => {
+      latest.current = { ...latest.current, selected: ids };
       setSelected(ids);
-      onState?.({ expanded, selected: ids });
+      onState?.(latest.current);
     },
-    [onState, expanded]
+    [onState]
   );
 
   return (
@@ -69,6 +75,8 @@ function Harness({ items, selectionMode, initialExpanded = [], onState }: Harnes
       itemsSelected={selected}
       onSelectedItemsChange={handleSelected}
       selectionMode={selectionMode}
+      hoverExpand={hoverExpand}
+      expandOnSelect={expandOnSelect}
       ariaLabel='test tree'
     />
   );
@@ -94,6 +102,22 @@ function mount(element: React.ReactElement) {
 function click(element: HTMLElement, init: MouseEventInit = {}) {
   act(() => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true, ...init }));
+  });
+}
+
+function hover(element: HTMLElement, from: HTMLElement | null = null) {
+  act(() => {
+    if (from) {
+      from.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: element }));
+    } else {
+      element.dispatchEvent(new MouseEvent("mouseover", { bubbles: true }));
+    }
+  });
+}
+
+function leave(element: HTMLElement) {
+  act(() => {
+    element.dispatchEvent(new MouseEvent("mouseout", { bubbles: true, relatedTarget: document.body }));
   });
 }
 
@@ -309,5 +333,119 @@ test("scrollToItemId scrolls to the row and reports when it settles", async () =
   });
   assert.equal(settled, 1);
 
+  view.unmount();
+});
+
+test("hoverExpand opens on chevron hover only and closes on leaving the subtree", () => {
+  const view = mount(<Harness items={nested} hoverExpand />);
+  const toggle = () => view.rows()[0].querySelector(".vt-toggle") as HTMLElement;
+
+  hover(view.rows()[0]);
+  assert.equal(view.rows().length, 2);
+
+  hover(toggle());
+  assert.equal(view.rows().length, 4);
+
+  hover(view.rows()[1], toggle());
+  assert.equal(view.rows().length, 4);
+
+  hover(view.rows()[3], view.rows()[1]);
+  assert.equal(view.rows().length, 2);
+  view.unmount();
+});
+
+test("hoverExpand keeps the node open when the chevron is clicked or a child is selected", () => {
+  const states: { expanded: string[]; selected: string[] }[] = [];
+  const view = mount(<Harness items={nested} hoverExpand onState={(s) => states.push(s)} />);
+  const toggle = () => view.rows()[0].querySelector(".vt-toggle") as HTMLElement;
+
+  hover(toggle());
+  click(toggle());
+  assert.deepEqual(states.at(-1)?.expanded, ["a"]);
+  leave(view.tree());
+  assert.equal(view.rows().length, 4);
+  view.unmount();
+
+  const second = mount(<Harness items={nested} hoverExpand onState={(s) => states.push(s)} />);
+  hover(second.rows()[0].querySelector(".vt-toggle") as HTMLElement);
+  click(second.rows()[1]);
+  assert.ok(states.some((state) => state.expanded.includes("a")));
+  leave(second.tree());
+  assert.equal(second.rows().length, 4);
+  second.unmount();
+});
+
+test("hoverExpand does not persist the node when the parent row itself is clicked", () => {
+  const states: { expanded: string[]; selected: string[] }[] = [];
+  const view = mount(<Harness items={nested} hoverExpand onState={(s) => states.push(s)} />);
+  hover(view.rows()[0].querySelector(".vt-toggle") as HTMLElement);
+  click(view.rows()[0]);
+  assert.deepEqual(states.at(-1)?.selected, ["a"]);
+  assert.deepEqual(states.at(-1)?.expanded ?? [], []);
+  leave(view.tree());
+  assert.equal(view.rows().length, 2);
+  view.unmount();
+});
+
+test("expandOnSelect expands a collapsed node when it is selected", () => {
+  const view = mount(<Harness items={nested} expandOnSelect />);
+  click(view.rows()[0]);
+  assert.equal(view.rows().length, 4);
+  view.unmount();
+});
+
+test("hoverExpand: clicking a nested chevron commits the hover-open ancestors too", () => {
+  const states: { expanded: string[]; selected: string[] }[] = [];
+  const view = mount(<Harness items={nested} hoverExpand onState={(s) => states.push(s)} />);
+  const toggleOf = (i: number) => view.rows()[i].querySelector(".vt-toggle") as HTMLElement;
+
+  hover(toggleOf(0));
+  hover(view.rows()[2], toggleOf(0));
+  hover(toggleOf(2), view.rows()[2]);
+  assert.equal(view.rows().length, 5);
+  click(toggleOf(2));
+  assert.deepEqual(states.at(-1)?.expanded.slice().sort(), ["a", "a2"]);
+  leave(view.tree());
+  assert.equal(view.rows().length, 5);
+  view.unmount();
+});
+
+test("expandOnSelect does not expand when the click deselects", () => {
+  const view = mount(<Harness items={nested} expandOnSelect />);
+  click(view.rows()[0]);
+  click(view.rows()[0].querySelector(".vt-toggle") as HTMLElement);
+  assert.equal(view.rows().length, 2);
+  click(view.rows()[0]);
+  assert.equal(view.rows().length, 2);
+  view.unmount();
+});
+
+test("expandOnSelect leaves an already expanded node expanded", () => {
+  const view = mount(<Harness items={nested} expandOnSelect initialExpanded={["a"]} />);
+  click(view.rows()[0]);
+  assert.equal(view.rows().length, 4);
+  view.unmount();
+});
+
+test("hoverExpand: clicking row actions in a descendant commits the hover-open ancestors", () => {
+  const states: { expanded: string[]; selected: string[] }[] = [];
+  const view = mount(
+    <VirtualizedTree
+      items={nested}
+      getItemId={getItemId}
+      getItemLabel={getItemLabel}
+      getItemChildren={getItemChildren}
+      itemsExpanded={[]}
+      onExpandedItemsChange={(ids) => states.push({ expanded: ids, selected: [] })}
+      itemsSelected={[]}
+      onSelectedItemsChange={() => {}}
+      renderItemActions={(item) => <button className={`act-${item.id}`}>x</button>}
+      hoverExpand
+    />
+  );
+  hover(view.rows()[0].querySelector(".vt-toggle") as HTMLElement);
+  hover(view.rows()[1], view.rows()[0]);
+  click(view.host.querySelector(".act-a1") as HTMLElement);
+  assert.deepEqual(states.at(-1)?.expanded, ["a"]);
   view.unmount();
 });

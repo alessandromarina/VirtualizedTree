@@ -53,7 +53,7 @@ function VirtualizedTree<T>({
               <div className={styles.main}>
                 <span className={styles.label}>{getItemLabel(row.item)}</span>
                 {renderItemActions && (
-                  <div {...tree.getActionsProps()} className={styles.actions}>
+                  <div {...tree.getActionsProps(row)} className={styles.actions}>
                     {renderItemActions(row.item, row.id)}
                   </div>
                 )}

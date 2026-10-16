@@ -95,7 +95,7 @@ function VirtualizedTree<T>({
                 </Typography>
                 {renderItemActions && (
                   <Box
-                    {...tree.getActionsProps()}
+                    {...tree.getActionsProps(row)}
                     sx={{ display: "flex", alignItems: "center", gap: 0.25, flexShrink: 0 }}>
                     {renderItemActions(row.item, row.id)}
                   </Box>

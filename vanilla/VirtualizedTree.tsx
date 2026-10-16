@@ -98,7 +98,7 @@ function VirtualizedTree<T>({
               <div className='vt-main'>
                 <span className='vt-label'>{getItemLabel(row.item)}</span>
                 {renderItemActions && (
-                  <div {...tree.getActionsProps()} className='vt-actions'>
+                  <div {...tree.getActionsProps(row)} className='vt-actions'>
                     {renderItemActions(row.item, row.id)}
                   </div>
                 )}

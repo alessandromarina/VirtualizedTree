@@ -19,6 +19,8 @@ export type VirtualizedTreeOptions<T> = {
   scrollBehavior?: ScrollBehavior;
   scrollSettleMs?: number;
   ariaLabel?: string;
+  hoverExpand?: boolean;
+  expandOnSelect?: boolean;
 };
 
 export type VirtualizedTreeSkinProps<T> = VirtualizedTreeOptions<T> & {
@@ -45,7 +47,7 @@ export type VirtualizedTreeApi<T> = {
   rows: VirtualizedTreeRow<T>[];
   getRowProps: (row: VirtualizedTreeRow<T>) => DivProps;
   getToggleProps: (row: VirtualizedTreeRow<T>) => DivProps;
-  getActionsProps: () => DivProps;
+  getActionsProps: (row?: VirtualizedTreeRow<T>) => DivProps;
   itemHeight: number;
   indentWidth: number;
   totalHeight: number;
@@ -88,6 +90,8 @@ export function useVirtualizedTree<T>({
   scrollBehavior = "smooth",
   scrollSettleMs = VIRTUALIZED_TREE_DEFAULTS.scrollSettleMs,
   ariaLabel,
+  hoverExpand = false,
+  expandOnSelect = false,
 }: VirtualizedTreeOptions<T>): VirtualizedTreeApi<T> {
   const instanceId = useId();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -97,11 +101,17 @@ export function useVirtualizedTree<T>({
   const [containerHeight, setContainerHeight] = useState(600);
   const [focusedId, setFocusedId] = useState<string | null>(null);
   const [isFocusVisible, setIsFocusVisible] = useState(false);
+  const [hoverIds, setHoverIds] = useState<string[]>([]);
+
+  const expandedItems = useMemo(
+    () => (hoverExpand && hoverIds.length > 0 ? Array.from(new Set([...itemsExpanded, ...hoverIds])) : itemsExpanded),
+    [hoverExpand, hoverIds, itemsExpanded]
+  );
 
   const { flatNodes, indexById } = useMemo(() => {
     const nodes: FlatNode<T>[] = [];
     const byId = new Map<string, number>();
-    const expanded = new Set(itemsExpanded);
+    const expanded = new Set(expandedItems);
 
     const flatten = (itemsList: T[], depth: number, parentIndex: number) => {
       itemsList.forEach((item) => {
@@ -122,7 +132,13 @@ export function useVirtualizedTree<T>({
 
     flatten(items, 0, -1);
     return { flatNodes: nodes, indexById: byId };
-  }, [items, itemsExpanded, getItemId, getItemChildren]);
+  }, [items, expandedItems, getItemId, getItemChildren]);
+
+  useEffect(() => {
+    if (focusedId !== null && !indexById.has(focusedId)) {
+      setFocusedId(null);
+    }
+  }, [focusedId, indexById]);
 
   const selectedSet = useMemo(() => new Set(itemsSelected), [itemsSelected]);
   const expandedSet = useMemo(() => new Set(itemsExpanded), [itemsExpanded]);
@@ -166,14 +182,63 @@ export function useVirtualizedTree<T>({
     return () => clearTimeout(timer);
   }, [scrollToItemId, indexById, itemHeight, scrollBehavior, scrollSettleMs, onScrollComplete]);
 
-  const setExpanded = useCallback(
-    (id: string, expanded: boolean) => {
-      if (expanded === expandedSet.has(id)) {
+  const isWithin = useCallback(
+    (index: number, ancestorId: string) => {
+      let current = index;
+      while (current >= 0) {
+        const node = flatNodes[current];
+        if (node.id === ancestorId) {
+          return true;
+        }
+        current = node.parentIndex;
+      }
+      return false;
+    },
+    [flatNodes]
+  );
+
+  const keepHoverAround = useCallback(
+    (index: number, extraId?: string) => {
+      setHoverIds((prev) => {
+        const kept = prev.filter((id) => isWithin(index, id));
+        const next = extraId !== undefined && !kept.includes(extraId) ? [...kept, extraId] : kept;
+        return next.length === prev.length && next.every((id, i) => id === prev[i]) ? prev : next;
+      });
+    },
+    [isWithin]
+  );
+
+  const commitHoverAncestors = useCallback(
+    (index: number, id: string) => {
+      const promoted = hoverIds.filter((h) => h !== id && isWithin(index, h));
+      if (promoted.length === 0) {
         return;
       }
-      onExpandedItemsChange(expanded ? [...itemsExpanded, id] : itemsExpanded.filter((x) => x !== id));
+      setHoverIds((prev) => prev.filter((h) => !promoted.includes(h)));
+      onExpandedItemsChange(Array.from(new Set([...itemsExpanded, ...promoted])));
     },
-    [expandedSet, itemsExpanded, onExpandedItemsChange]
+    [hoverIds, isWithin, itemsExpanded, onExpandedItemsChange]
+  );
+
+  const setExpanded = useCallback(
+    (id: string, expanded: boolean) => {
+      const index = indexById.get(id);
+      const promoted = index === undefined ? [] : hoverIds.filter((h) => h !== id && isWithin(index, h));
+      const cleared = hoverIds.filter((h) => h === id || promoted.includes(h));
+      if (cleared.length > 0) {
+        setHoverIds((prev) => prev.filter((h) => !cleared.includes(h)));
+      }
+      const next = new Set([...itemsExpanded, ...promoted]);
+      if (expanded) {
+        next.add(id);
+      } else {
+        next.delete(id);
+      }
+      if (next.size !== itemsExpanded.length || Array.from(next).some((x) => !itemsExpanded.includes(x))) {
+        onExpandedItemsChange(Array.from(next));
+      }
+    },
+    [indexById, hoverIds, isWithin, itemsExpanded, onExpandedItemsChange]
   );
 
   const selectOnly = useCallback(
@@ -209,7 +274,20 @@ export function useVirtualizedTree<T>({
 
       setFocusedId(node.id);
 
+      const promoted = hoverIds.filter((id) => id !== node.id && isWithin(index, id));
+      if (promoted.length > 0) {
+        setHoverIds((prev) => prev.filter((id) => !promoted.includes(id)));
+      }
+      const commitExpansion = (includeSelf: boolean) => {
+        const additions =
+          includeSelf && expandOnSelect && node.hasChildren && !node.isExpanded ? [...promoted, node.id] : promoted;
+        if (additions.length > 0) {
+          onExpandedItemsChange(Array.from(new Set([...itemsExpanded, ...additions])));
+        }
+      };
+
       if (selectionMode === "multiple" && modifiers.range && anchorIndexRef.current !== null) {
+        commitExpansion(true);
         selectRange(anchorIndexRef.current, index);
         return;
       }
@@ -217,13 +295,27 @@ export function useVirtualizedTree<T>({
       anchorIndexRef.current = index;
 
       if (selectionMode === "multiple" && modifiers.toggle) {
+        commitExpansion(!selectedSet.has(node.id));
         toggleSelection(node.id);
         return;
       }
 
+      commitExpansion(!(selectedSet.size === 1 && selectedSet.has(node.id)));
       selectOnly(node.id);
     },
-    [flatNodes, selectionMode, selectRange, toggleSelection, selectOnly]
+    [
+      flatNodes,
+      hoverIds,
+      isWithin,
+      expandOnSelect,
+      itemsExpanded,
+      onExpandedItemsChange,
+      selectedSet,
+      selectionMode,
+      selectRange,
+      toggleSelection,
+      selectOnly,
+    ]
   );
 
   const scrollIndexIntoView = useCallback(
@@ -341,8 +433,9 @@ export function useVirtualizedTree<T>({
         pointerDownRef.current = false;
       },
       onBlur: () => setIsFocusVisible(false),
+      onMouseLeave: hoverExpand ? () => setHoverIds((prev) => (prev.length ? [] : prev)) : undefined,
     }),
-    [ariaLabel, selectionMode, focusedId, instanceId, handleKeyDown]
+    [ariaLabel, selectionMode, focusedId, instanceId, handleKeyDown, hoverExpand]
   );
 
   const getRowProps = useCallback(
@@ -355,8 +448,9 @@ export function useVirtualizedTree<T>({
       "data-tree-focus": row.isFocusVisible ? "true" : undefined,
       onClick: (e: React.MouseEvent<HTMLDivElement>) =>
         handleSelect(row.index, { range: e.shiftKey, toggle: e.ctrlKey || e.metaKey }),
+      onMouseEnter: hoverExpand ? () => keepHoverAround(row.index) : undefined,
     }),
-    [instanceId, handleSelect]
+    [instanceId, handleSelect, hoverExpand, keepHoverAround]
   );
 
   const getToggleProps = useCallback(
@@ -364,15 +458,31 @@ export function useVirtualizedTree<T>({
       "aria-hidden": true,
       onClick: (e: React.MouseEvent<HTMLDivElement>) => {
         e.stopPropagation();
-        setExpanded(row.id, !row.isExpanded);
+        const isHoverOnly = hoverIds.includes(row.id) && !expandedSet.has(row.id);
+        setExpanded(row.id, isHoverOnly ? true : !row.isExpanded);
       },
+      onMouseEnter:
+        hoverExpand ?
+          () => {
+            if (row.hasChildren && !expandedSet.has(row.id)) {
+              keepHoverAround(row.index, row.id);
+            }
+          }
+        : undefined,
     }),
-    [setExpanded]
+    [setExpanded, hoverIds, expandedSet, hoverExpand, keepHoverAround]
   );
 
   const getActionsProps = useCallback(
-    () => ({ onClick: (e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation() }),
-    []
+    (row?: VirtualizedTreeRow<T>) => ({
+      onClick: (e: React.MouseEvent<HTMLDivElement>) => {
+        e.stopPropagation();
+        if (row) {
+          commitHoverAncestors(row.index, row.id);
+        }
+      },
+    }),
+    [commitHoverAncestors]
   );
 
   return {

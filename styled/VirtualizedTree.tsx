@@ -118,7 +118,7 @@ function VirtualizedTree<T>({ getItemLabel, renderItemActions, className, ...opt
               <Main>
                 <Label>{getItemLabel(row.item)}</Label>
                 {renderItemActions && (
-                  <Actions {...tree.getActionsProps()}>{renderItemActions(row.item, row.id)}</Actions>
+                  <Actions {...tree.getActionsProps(row)}>{renderItemActions(row.item, row.id)}</Actions>
                 )}
               </Main>
             </Row>

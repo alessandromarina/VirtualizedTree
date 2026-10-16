@@ -155,6 +155,8 @@ Every skin takes the same props: the hook options below, plus `getItemLabel`, pl
 | `scrollBehavior`        | `ScrollBehavior`                         | no       | `"smooth"` | Passed to `scrollTo`.                                                    |
 | `scrollSettleMs`        | `number`                                 | no       | `300`      | Delay before `onScrollComplete` fires.                                   |
 | `ariaLabel`             | `string`                                 | no       | -          | Accessible name for the tree.                                            |
+| `hoverExpand`           | `boolean`                                | no       | `false`    | Hovering a chevron temporarily expands the node; it stays open while the pointer is on that row or one of its descendants, then closes. Clicking the chevron or a descendant keeps it open; clicking the row itself does not. Leaving the tree closes it. While hover-open, `aria-expanded` is `true`. |
+| `expandOnSelect`        | `boolean`                                | no       | `false`    | Selecting (not deselecting) a collapsed node with children also expands it. |
 
 Per-skin styling props:
 
